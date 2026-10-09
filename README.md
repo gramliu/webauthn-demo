@@ -74,6 +74,8 @@ Accounts are namespaced by their exact application origin, separating localhost 
 
 `vercel.json` composes the Vite frontend and native Go API using **Vercel Services (beta)**. The original `/api` prefix reaches Go unchanged. Frontend deep links resolve to the SPA. Both deploy together under one URL.
 
+The Go service's explicit build command disables VCS stamping because deployment filtering can remove Git metadata. Deployment and GitHub commit metadata still identify the release.
+
 Required server-only environment variables:
 
 - `DATABASE_URL`: pooled Postgres connection, provided by the Neon integration.
