@@ -1,0 +1,15 @@
+.vercel/
+.env*
+!.env.example
+node_modules/
+dist/
+backend/server
+playwright-report/
+test-results/
+*.local
+.DS_Store
+.agents/
+skills-lock.json
+artifacts/
+*.tsbuildinfo
+

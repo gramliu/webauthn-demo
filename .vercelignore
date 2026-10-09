@@ -1,0 +1,9 @@
+.git
+.agents
+.env*
+artifacts
+web/test-results
+web/playwright-report
+web/node_modules
+web/dist
+backend/server
