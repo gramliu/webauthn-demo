@@ -168,12 +168,12 @@ func dbStore(t *testing.T) *Store {
 		t.Fatal("database connection failed")
 	}
 	t.Cleanup(s.Pool.Close)
-	s.Origin = "http://test-" + randomID() + ".test"
+	s.Origin = "https://test-" + randomID() + ".test"
 	return s
 }
 func dbAccount(t *testing.T, s *Store) *Account {
 	t.Helper()
-	a := &Account{ID: randomID(), Name: "integration-test", PRFSalt: randomID()}
+	a := &Account{ID: randomID(), Name: "integration-test-" + randomID()[:8], PRFSalt: randomID()}
 	if err := s.Create(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
@@ -244,5 +244,54 @@ func TestPostgresAtomicUpdatesAndOriginIsolation(t *testing.T) {
 	}
 	if _, err = other.Update(ctx, a.ID, func(*Account) error { return nil }); err == nil {
 		t.Fatal("account mutation crossed origin namespace")
+	}
+}
+
+func TestApprovalCannotBeReadOrApprovedByAnotherAccount(t *testing.T) {
+	s := dbStore(t)
+	owner := dbAccount(t, s)
+	other := dbAccount(t, s)
+	ctx := context.Background()
+	e, _, _ := fixture(t)
+	server, err := NewServer(s, e, s.Origin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestID := randomID()
+	_, err = s.Update(ctx, owner.ID, func(a *Account) error {
+		a.Approvals = append(a.Approvals, Approval{ID: requestID, Status: "pending", ExpiresAt: time.Now().Add(time.Minute)})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherSession, err := s.NewSession(ctx, other.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest("GET", "/api/approvals/"+requestID, nil)
+	r.AddCookie(&http.Cookie{Name: "vault_session", Value: otherSession})
+	w := httptest.NewRecorder()
+	server.Handler().ServeHTTP(w, r)
+	if w.Code != 404 {
+		t.Fatal("approval exposed to another account")
+	}
+	token, err := s.Ceremony(ctx, owner.ID, "approve", requestID, &webauthn.SessionData{Challenge: "nonce"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(proof{Token: token, Credential: json.RawMessage(`{}`)})
+	r = httptest.NewRequest("POST", "/api/approvals/"+requestID+"/approve", strings.NewReader(string(body)))
+	r.AddCookie(&http.Cookie{Name: "vault_session", Value: otherSession})
+	r.Header.Set("Origin", server.Origin)
+	r.Header.Set("X-Vault-Request", "1")
+	w = httptest.NewRecorder()
+	server.Handler().ServeHTTP(w, r)
+	if w.Code != 403 {
+		t.Fatal("approval accepted from another account")
+	}
+	reloaded, err := s.ByID(ctx, owner.ID)
+	if err != nil || len(reloaded.Grants) != 0 || reloaded.Approvals[0].Status != "pending" {
+		t.Fatal("unauthorized request altered owner state")
 	}
 }

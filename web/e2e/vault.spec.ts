@@ -33,9 +33,9 @@ test('passkey registration, encrypted vault, approval, grant reuse, and revocati
   await page.getByRole('button', { name: 'Use with agent' }).click();
   await page.getByLabel('Requested access duration').selectOption('60');
   await page.getByRole('button', { name: 'Read my demo profile' }).click();
-  await expect(page.getByRole('button', { name: 'Review access request' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Review access request' })).toBeVisible();
   await expect(page.getByText('Signed in to the demo service', { exact: false })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Review access request' }).click();
+  await page.getByRole('link', { name: 'Review access request' }).click();
   await expect(page.getByRole('heading', { name: 'Your agent needs a key.' })).toBeVisible();
   await expect(page.getByText('1 minute', { exact: true })).toBeVisible();
   await page.screenshot({ path: '../artifacts/approval.png', fullPage: true });
@@ -52,7 +52,7 @@ test('passkey registration, encrypted vault, approval, grant reuse, and revocati
   await page.getByRole('button', { name: 'Revoke access', exact: true }).click();
   await expect(page.getByText('No access granted', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Send message' }).click();
-  await expect(page.getByRole('button', { name: 'Review access request' })).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Review access request' })).toHaveCount(3);
 
   await page.reload();
   await expect(page.getByText('Vault locked', { exact: true })).toBeVisible();

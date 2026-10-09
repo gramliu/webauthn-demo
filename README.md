@@ -93,9 +93,9 @@ Use a stable production/custom domain for a lasting passkey demo. A passkey regi
 
 ```sh
 make test
-cd backend && RUN_DB_TESTS=1 go test ./...  # real Postgres: replay, expiry, transactions, origin isolation
-cd web && npx playwright install chromium
-cd web && npx playwright test             # while make dev is running
+(cd backend && RUN_DB_TESTS=1 go test ./...)  # real Postgres: replay, expiry, transactions, origin isolation
+(cd web && npx playwright install chromium)
+(cd web && npx playwright test)             # while make dev is running
 ```
 
 Go tests cover grant boundaries, wrong scopes, tampering, cross-account ciphertext, OAEP request binding, and public-response redaction. Browser crypto tests cover vault wrapping and delegation. Playwright uses Chromium's virtual WebAuthn authenticator with PRF support to exercise real registration/signatures, vault encryption, approval, execution, grant reuse, revocation, reload/unlock, and mobile layout. Actual biometric hardware/provider support still needs a manual check on the target device.
