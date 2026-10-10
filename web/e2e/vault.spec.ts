@@ -1,9 +1,25 @@
 import { test, expect } from '@playwright/test';
 
-test('passkey registration, encrypted vault, approval, grant reuse, and revocation', async ({ page, context }) => {
+for (const prfFormat of ['native', 'base64url'] as const) {
+test(`passkey registration, encrypted vault, approval, grant reuse, and revocation (${prfFormat})`, async ({ page, context }) => {
   const session = await context.newCDPSession(page);
   await session.send('WebAuthn.enable', { enableUI: false });
   await session.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true, hasPrf: true } });
+  if (prfFormat === 'base64url') {
+    // Emulate an embedded-browser bridge returning JSON extension outputs.
+    // Real WebAuthn signatures and PRF bytes remain unchanged.
+    await page.addInitScript(() => {
+      const native = PublicKeyCredential.prototype.getClientExtensionResults;
+      PublicKeyCredential.prototype.getClientExtensionResults = function () {
+        const result = native.call(this);
+        const extensions = result as typeof result & { prf?: { results?: { first?: ArrayBuffer } } };
+        const first = extensions.prf?.results?.first;
+        if (!first) return result;
+        const encoded = btoa(String.fromCharCode(...new Uint8Array(first))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return { ...result, prf: { ...extensions.prf, results: { ...extensions.prf?.results, first: encoded } } };
+      };
+    });
+  }
   const credentialBodies: string[] = [];
   const browserErrors: string[] = [];
   page.on('pageerror', error => browserErrors.push(error.message));
@@ -67,3 +83,4 @@ test('passkey registration, encrypted vault, approval, grant reuse, and revocati
   await page.screenshot({ path: '../artifacts/mobile-vault.png', fullPage: true });
   expect(browserErrors).toEqual([]);
 });
+}

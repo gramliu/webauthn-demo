@@ -1,8 +1,29 @@
 import { b64, unb64 } from './crypto';
 import type { Ceremony } from './types';
 
-type Extensions = { prf?: { enabled?: boolean; results?: { first: ArrayBuffer } } };
+type Extensions = { prf?: { enabled?: boolean; results?: { first: unknown } } };
 type DescriptorJSON = Omit<PublicKeyCredentialDescriptor, 'id'> & { id: string };
+
+// Native APIs return BufferSource; WebAuthn JSON/embedded-browser bridges can
+// return base64url. Copy into this realm's ArrayBuffer before using Web Crypto.
+// Keep the bytes client-side and preserve the exact key material for old vaults.
+export function prfBytes(value: unknown): ArrayBuffer | undefined {
+  if (value === undefined || value === null) return undefined;
+  let bytes: Uint8Array;
+  if (typeof value === 'string' && /^[A-Za-z0-9+/_-]{43}=?$/.test(value)) {
+    bytes = unb64(value);
+  } else if (ArrayBuffer.isView(value)) {
+    bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  } else if (Object.prototype.toString.call(value) === '[object ArrayBuffer]') {
+    bytes = new Uint8Array(value as ArrayBuffer);
+  } else {
+    throw new Error('The passkey returned an unsupported encryption-key format. Try this site in your usual browser.');
+  }
+  if (bytes.byteLength !== 32) {
+    throw new Error('The passkey returned an invalid encryption key. Try this site in your usual browser.');
+  }
+  return Uint8Array.from(bytes).buffer;
+}
 
 function supported() {
   if (!window.isSecureContext || !navigator.credentials || typeof PublicKeyCredential === 'undefined') {
@@ -40,6 +61,6 @@ export async function authenticate(ceremony: Ceremony) {
   const publicKey = { ...data, challenge: unb64(data.challenge as string), allowCredentials: descriptors(data.allowCredentials), extensions: { prf: { eval: { first: unb64(ceremony.salt) } } } } as unknown as PublicKeyCredentialRequestOptions;
   const credential = await navigator.credentials.get({ publicKey }) as PublicKeyCredential | null;
   if (!credential) throw new Error('Passkey verification was cancelled.');
-  const prf = (credential.getClientExtensionResults() as Extensions).prf?.results?.first;
+  const prf = prfBytes((credential.getClientExtensionResults() as Extensions).prf?.results?.first);
   return { credential: serialize(credential), prf };
 }
