@@ -21,7 +21,7 @@ test('passkey registration, encrypted vault, approval, grant reuse, and revocati
   await downloadPromise;
 
   await page.getByRole('button', { name: 'Credential vault', exact: false }).click();
-  await page.getByRole('button', { name: 'Add your first credential' }).click();
+  await page.getByRole('button', { name: 'Add credential', exact: true }).click();
   await page.getByLabel('Credential name').fill('Demo profile');
   await page.getByLabel('Username', { exact: true }).fill('fake@example.test');
   await page.getByLabel('Password', { exact: true }).fill('E2E-PASSWORD-NEVER-IN-CHAT');

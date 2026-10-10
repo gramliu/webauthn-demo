@@ -46,7 +46,7 @@ label { display: block; font-size: 13px; font-weight: 500; margin: 17px 0 8px; }
 .steps small { color: #85917f; font-size: 11px; }
 .signin-card { width: 100%; padding: 34px; background: #fff; border: 1px solid #e3e7df; border-radius: 17px; box-shadow: 0 12px 65px #43532c08; }
 .card-icon { color: #4d7453; background: #f0f5e9; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 17px; margin-bottom: 25px; }
-.signin-card h2 { font-family: Georgia, serif; font-weight: 400; font-size: 26px; letter-spacing: -.6px; }
+.signin-card h1 { font-family: Georgia, serif; font-weight: 400; font-size: 26px; letter-spacing: -.6px; }
 .signin-card > p { color: #8a9287; font-size: 13px; line-height: 1.8; margin: 12px 0 24px; }
 .signin-card form .primary { margin-top: 17px; justify-content: space-between; }
 .signin-card > .text-button { margin: 9px 0 17px; }
