@@ -107,7 +107,7 @@ func (e *Executor) execute(a *Account, g *Grant, now time.Time) (string, error) 
 	// This intentionally local mock service accepts any non-empty demo login.
 	// No external URL or model ever receives the password. Replace only this
 	// allowlisted tool when adding a real integration.
-	result := "Signed in to the demo service as " + secret["username"] + ". Your demo profile is ready: Personal plan · 3 saved projects."
+	result := "Signed in as " + secret["username"] + ". Personal plan · 3 saved projects."
 	delete(secret, "password")
 	g.Uses++
 	a.event("credential_used", g.Label+" · read demo profile")

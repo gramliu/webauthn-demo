@@ -412,14 +412,14 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 				if e != nil {
 					return e
 				}
-				a.message("assistant", result+" Used your existing grant; no new approval needed.", "")
+				a.message("assistant", result+" Existing grant used.", "")
 				return nil
 			}
 		}
 		for i := range a.Approvals {
 			p := &a.Approvals[i]
 			if p.ItemID == item.ID && p.Status == "pending" && time.Now().Before(p.ExpiresAt) {
-				a.message("assistant", "I need your approval to use "+item.Label+". Open the approval link and verify with your passkey.", p.ID)
+				a.message("assistant", "Approval is pending for "+item.Label+".", p.ID)
 				return nil
 			}
 		}
@@ -429,7 +429,7 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) error {
 		p := Approval{ID: randomID(), ItemID: item.ID, ItemVersion: item.Version, Label: item.Label, Agent: "personal-agent", Operation: "read-demo-profile", Destination: "demo-service", LeaseSeconds: in.LeaseSeconds, KeyID: s.Executor.KeyID, Status: "pending", CreatedAt: time.Now().UTC(), ExpiresAt: time.Now().UTC().Add(10 * time.Minute)}
 		a.Approvals = append(a.Approvals, p)
 		a.event("approval_requested", item.Label+" · read demo profile")
-		a.message("assistant", "I can read your demo profile using "+item.Label+". Please approve credential access with your passkey first.", p.ID)
+		a.message("assistant", "Approve access to "+item.Label+" to read your demo profile.", p.ID)
 		return nil
 	})
 	if err != nil {
@@ -512,7 +512,6 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) error {
 		p.Status = "approved"
 		a.Grants = append(a.Grants, g)
 		a.event("grant_approved", p.Label+" · "+fmt.Sprint(p.LeaseSeconds)+" second lease")
-		a.message("assistant", "Access approved. I can use this credential until "+g.ExpiresAt.Format(time.RFC3339)+". Resume the pending action when ready.", p.ID)
 		return nil
 	})
 	if err != nil {
@@ -536,7 +535,7 @@ func (s *Server) deny(w http.ResponseWriter, r *http.Request) error {
 		}
 		p.Status = "denied"
 		a.event("approval_denied", p.Label)
-		a.message("assistant", "Access denied. I did not use the credential.", "")
+		a.message("assistant", "Access denied.", "")
 		return nil
 	})
 	if err != nil {
