@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-for (const prfFormat of ['native', 'base64url'] as const) {
+for (const prfFormat of ['native', 'base64url', '1password-array'] as const) {
 test(`passkey registration, encrypted vault, approval, grant reuse, and revocation (${prfFormat})`, async ({ page, context }) => {
   const session = await context.newCDPSession(page);
   await session.send('WebAuthn.enable', { enableUI: false });
   await session.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true, hasPrf: true } });
-  if (prfFormat === 'base64url') {
-    // Emulate an embedded-browser bridge returning JSON extension outputs.
+  if (prfFormat !== 'native') {
+    // Emulate JSON bridges or 1Password's plain-array PRF response.
     // Real WebAuthn signatures and PRF bytes remain unchanged.
-    await page.addInitScript(() => {
+    await page.addInitScript(format => {
       const native = PublicKeyCredential.prototype.getClientExtensionResults;
       PublicKeyCredential.prototype.getClientExtensionResults = function () {
         const result = native.call(this);
@@ -16,9 +16,9 @@ test(`passkey registration, encrypted vault, approval, grant reuse, and revocati
         const first = extensions.prf?.results?.first;
         if (!first) return result;
         const encoded = btoa(String.fromCharCode(...new Uint8Array(first))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        return { ...result, prf: { ...extensions.prf, results: { ...extensions.prf?.results, first: encoded } } };
+        return { ...result, prf: { ...extensions.prf, results: { ...extensions.prf?.results, first: format === '1password-array' ? Array.from(new Uint8Array(first)) : encoded } } };
       };
-    });
+    }, prfFormat);
   }
   const credentialBodies: string[] = [];
   const browserErrors: string[] = [];

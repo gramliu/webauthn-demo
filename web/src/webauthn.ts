@@ -4,8 +4,8 @@ import type { Ceremony } from './types';
 type Extensions = { prf?: { enabled?: boolean; results?: { first: unknown } } };
 type DescriptorJSON = Omit<PublicKeyCredentialDescriptor, 'id'> & { id: string };
 
-// Native APIs return BufferSource; WebAuthn JSON/embedded-browser bridges can
-// return base64url. Copy into this realm's ArrayBuffer before using Web Crypto.
+// Native APIs return BufferSource; 1Password's extension can return a byte array,
+// and JSON bridges can return base64url. Copy into this realm's ArrayBuffer.
 // Keep the bytes client-side and preserve the exact key material for old vaults.
 export function prfBytes(value: unknown): ArrayBuffer | undefined {
   if (value === undefined || value === null) return undefined;
@@ -16,11 +16,18 @@ export function prfBytes(value: unknown): ArrayBuffer | undefined {
     bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
   } else if (Object.prototype.toString.call(value) === '[object ArrayBuffer]') {
     bytes = new Uint8Array(value as ArrayBuffer);
+  } else if (Array.isArray(value)) {
+    // Validate before conversion: Uint8Array would silently coerce or truncate
+    // invalid entries, changing the key. Array.from also exposes sparse holes.
+    if (value.length !== 32 || !Array.from(value).every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+      throw new Error('The passkey returned an invalid encryption key.');
+    }
+    bytes = Uint8Array.from(value);
   } else {
-    throw new Error('The passkey returned an unsupported encryption-key format. Try this site in your usual browser.');
+    throw new Error('The passkey returned an unsupported encryption-key format.');
   }
   if (bytes.byteLength !== 32) {
-    throw new Error('The passkey returned an invalid encryption key. Try this site in your usual browser.');
+    throw new Error('The passkey returned an invalid encryption key.');
   }
   return Uint8Array.from(bytes).buffer;
 }
